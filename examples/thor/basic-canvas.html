@@ -1,0 +1,414 @@
+<html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/102/three.js"></script>
+    <script src="https://s3-us-west-2.amazonaws.com/teton-cdn/thorjs/thor-19.0.42.dev.js"></script>
+    <!--<script src="thor.dev.js"></script>-->
+
+    <style type="text/css">
+      .canvas-wrapper {
+        background-color: #808080;
+        padding:10px;
+        margin:5px;
+      }
+
+      #canvas-container {
+        height:600px;
+      }
+
+      .legend {
+        position: absolute;
+        display: flex;
+      }
+
+      .legend ul {
+        margin:0px;
+        padding-left: 30px;
+        list-style:none;
+      }
+
+      .legend ul li {
+        padding-top:5px;
+        padding-bottom:5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="credentials">
+      <input type="text" id="thor-email" placeholder="Email" value=""/>
+      <input type="password" id="thor-password" placeholder="Password"/>
+      <button onclick="getToken()">Get Token</button>
+    </div>
+    <p id="user"></p>
+    <button id="btn-load-template" onclick="loadTemplate()">Load Template</button>
+    <button id="btn-run-model" onclick="runModel()">Run Model</button>
+    <div class="canvas-wrapper">
+      <div id="canvas-container">
+
+          <div class="legend">
+              <svg width="25" height="0">
+                  <defs>
+                      <linearGradient id="hsl-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="hsl(240, 100%, 50%)" />
+                        <stop offset="10%" stop-color="hsl(216, 100%, 50%)" />
+                        <stop offset="20%" stop-color="hsl(192, 100%, 50%)" />
+                        <stop offset="30%" stop-color="hsl(168, 100%, 50%)" />
+                        <stop offset="40%" stop-color="hsl(144, 100%, 50%)" />
+                        <stop offset="50%" stop-color="hsl(120, 100%, 50%)" />
+                        <stop offset="60%" stop-color="hsl(96, 100%, 50%)" />
+                        <stop offset="70%" stop-color="hsl(72, 100%, 50%)" />
+                        <stop offset="80%" stop-color="hsl(48, 100%, 50%)" />
+                        <stop offset="90%" stop-color="hsl(24, 100%, 50%)" />
+                        <stop offset="100%" stop-color="hsl(0, 100%, 50%)" />
+                      </linearGradient>
+                    </defs>
+                <rect width="25" height="0" style="fill:url(#hsl-gradient)"/>
+              </svg>
+              <ul>
+              </ul>
+            </div>
+
+      </div>
+    </div>
+    <p id="error"></p>
+
+    <div id="post-process-control-panel">
+      <label>Choose Load Case:</label>
+      <select id="results-step-selection" disabled="true">
+      </select>
+      <label>Deformation On/Off</label>
+      <input id="results-deform-switch" type="checkbox" disabled="true"/>
+      <p id="results-deformation-scale">Deformation Scale: 0</p>
+      <label>Contour:</label>
+      <br/>
+      <select id="results-contour-selection" disabled="true">
+      </select>
+      <div id="results-contour-component">
+      </div>
+    </div>
+
+    <script>
+      var api = new thor.API();
+      var canvas = new thor.UI.Canvas();
+      var modelTemplate = null;
+      var p = null;
+
+      init();
+
+      function init() {
+        let container = document.getElementById('canvas-container');
+        canvas.init(container);
+        
+        render();
+
+        document.getElementById('btn-run-model').disabled = true;
+
+        apiInit();
+      }
+
+      function render() {
+        canvas.update();
+        requestAnimationFrame(render);
+      }
+
+      function showUserInfo(user) {
+            document.getElementById('credentials').hidden = true;
+            document.getElementById('user').innerText = user.first_name + ' ' + user.last_name;
+      }
+
+      function apiInit() {
+        api.whoAmI(
+          function() {
+            showUserInfo(this);
+          },
+          function() {
+            // do nothing - user needs to get a token
+          }
+        )
+      }
+
+      function apiError() {
+        console.error(this.message);
+        document.getElementById('error').innerText = this.message;
+      }
+
+      function getToken() {
+        var email = document.getElementById('thor-email').value;
+        var password = document.getElementById('thor-password').value;
+        
+        api.getToken(email, password, 
+          function() {
+            showUserInfo(this);
+          },
+          apiError
+        );
+      }
+
+      function loadTemplate() {
+        // get the model template
+        api.feaTemplate(
+          'fde2afcf90124c9087b1c1ee44cf4e23',
+          loadModelIntoCanvas,
+          apiError
+        );
+      }
+
+      function loadModelIntoCanvas() {
+        let model = new thor.UI.Model(this.model);
+
+        let groupPromise = canvas.newModelGroup(this.name, model);
+
+        canvas.zoomToFit();
+
+        modelTemplate = this;
+
+        document.getElementById('btn-load-template').disabled = true;
+        document.getElementById('btn-run-model').disabled = false;
+      }
+
+      function loadResultIntoCanvas(model, result) {
+        canvas.reset(); // removes all existing model groups
+
+        // In order to show the deformed geometry and the undeformed
+        // geometry we need two model groups. Only one of them needs
+        // the results. The one with the results will be used for deformation
+        // and contour plots. The other will remaine undeformed
+
+        let p1 = canvas.newModelGroup(
+          'original',
+          new thor.UI.Model(model)
+        );
+
+        let p2 = canvas.newModelGroup(
+          'deformed',
+          new thor.UI.Model(model),
+          new thor.UI.Results(result)
+        );
+
+        // From here down is some code to setup the post processing
+        // controls for this example page.
+        Promise.all([p1, p2]).then(groups => {
+          g1 = groups[0]; // NO results
+          g2 = groups[1]; // has results
+
+          canvas.zoomToFit();
+
+          // For the undeformed geometry turn off the surface mesh and turn
+          // on the outline mesh
+          g1.surface.visible = false;
+          g1.outline.visible = true;
+
+          document.getElementById('btn-run-model').disabled = true;
+
+          setupStepSelection(g2);
+          setupDeformationSwitch(g2);
+          setupContourSelection(g2);
+        });
+      }
+
+      function runModel() {
+        let printConfig = modelTemplate.manufacturing_config;
+
+        // update the printConfig here
+
+        // get the material we want
+        api.materialGet('11ce5cfd6d0645b58f5e4ff88185d09d',
+          function() {
+
+            // First thing we need to do is build a new model definition
+            // with the desired print parameters. We do that with
+            // thor.FEA.Builders.Model. This function might take a moment
+            // so it returns a Promise to return the new model definition.
+            console.log('Building new model with print config');
+            thor.FEA.Builders.Model(
+              api,
+              modelTemplate,
+              this.fea,
+              printConfig
+            ).then(
+              function(newModel) {
+
+                // When we get our new model back we can now run it. This process
+                // can be a little complicated, but there's a nice helper function
+                // in the API to handle everything. It submits the model for analysis
+                // and returns a Promise to return the results. Once we get the results
+                // back we call loadResultIntoCanvas.
+                console.log('Running new model');
+                api.feaQuickRun(newModel).then(
+                  function(result) {
+                    loadResultIntoCanvas(newModel, result);
+                  },
+                  error => console.error('Failed to run FEA model: ' + error.message)
+                )
+              },
+              error => console.error('Failed to build FEA model: ' + error.message)
+            ).catch(
+              error => console.error(error)
+            )
+          }
+        );
+      }
+
+      function setupStepSelection(group) {
+        let stepSelect = document.getElementById('results-step-selection');
+
+        group.results.stepNames().forEach(
+          name => {
+            let option = document.createElement('option');
+            option.value = name;
+            option.innerText = name;
+            stepSelect.appendChild(option);
+          }
+        );
+
+        stepSelect.disabled = false;
+
+        stepSelect.addEventListener(
+          'change',
+          event => {
+            group.setStep(event.target.value);
+            if (group.state.deformation.active) {
+              document.getElementById('results-deformation-scale').innerText = 
+              'Deformation Scale: ' + group.state.deformation.scaleFactor.toPrecision(3);
+            }
+          }
+        );
+
+        group.setStep(group.results.stepNames()[stepSelect.selectedIndex]);
+      }
+
+      function setupDeformationSwitch(group) {
+        let deformSwitch = document.getElementById('results-deform-switch');
+
+        deformSwitch.disabled = false;
+
+        deformSwitch.addEventListener(
+          'change',
+          event => {
+            let scale = document.getElementById('results-deformation-scale');
+            if (deformSwitch.checked) {
+              group.deform();
+              scale.innerText = 'Deformation Scale: ' + group.state.deformation.scaleFactor.toPrecision(3);
+            } else {
+              group.undeform();
+              scale.innerText = 'Deformation Scale: 0';
+            }
+          }
+        );
+      }
+
+      function setupContourSelection(group) {
+        let contourSelect = document.getElementById('results-contour-selection');
+
+        // First we need to get a list of available results to fill out the drop down.
+        // This requires us to choose a step/load case. For now we can assume
+        // all steps have the same results, so just use the first step.
+        let step = group.results.getStep(group.results.stepNames()[0]);
+
+        for (let rmeta of step.meta.results) {
+          let option = document.createElement('option');
+          option.value = JSON.stringify(rmeta);
+          option.innerText = rmeta.displayName;
+          contourSelect.appendChild(option);
+        }
+
+        contourSelect.disabled = false;
+
+        contourSelect.addEventListener(
+          'change',
+          event => {
+            let resultInfo = JSON.parse(event.target.value);
+
+            // when a new result is chosen call a function to
+            // setup another dropdown to choose the component
+            setupContourComponentSelection(group, resultInfo);
+          }
+        );
+
+        contourSelect.dispatchEvent(new Event('change'));
+      }
+
+      function setupContourComponentSelection(group, resultInfo) {
+        let select = document.createElement('select');
+
+        // loop through the components and add them as <option>s
+        for (let comp of resultInfo.components) {
+          let option = document.createElement('option');
+          option.value = comp.component;
+          option.innerText = comp.displayName;
+          select.appendChild(option);
+        }
+
+        select.addEventListener(
+          'change',
+          event => {
+            if (resultInfo.location === 'node') {
+              group.nodeContour(resultInfo.name, event.target.value);
+            } else if (resultInfo.location === 'gauss_point') {
+              // gauss point contour require more information,
+              // but just hard code gaussPoint, layer, and sectionPoint
+              // to the following values for now.
+              group.gaussPointContour(resultInfo.name,
+                {
+                  component: event.target.value,
+                  gaussPoint: 'MAXABS',
+                  layer: 0,
+                  sectionPoint: 0
+                }
+              );
+            } else {
+              group.uncontour();
+            }
+
+            updateLegend(group);
+          }
+        );
+
+        let divComponent = document.getElementById('results-contour-component');
+        divComponent.innerHTML = '';
+        divComponent.appendChild(select);
+
+        select.dispatchEvent(new Event('change'));
+      }
+
+      function updateLegend(modelGroup) {
+        // The group state holds an object which can be used
+        // to retrieve values for a legend
+        setLegendValues(modelGroup.state.contour.legend);
+        updateLegendHeight();
+      }
+
+      function updateLegendHeight() {
+        let legend = document.getElementsByClassName('legend')[0];
+        let svg = legend.getElementsByTagName('svg')[0];
+        let rect = svg.getElementsByTagName('rect')[0];
+        svg.setAttribute('height', legend.clientHeight);
+        rect.setAttribute('height', legend.clientHeight);
+      }
+
+      function setLegendValues(contour) {
+        let legend = document.getElementsByClassName('legend')[0];
+        let ul = legend.getElementsByTagName('ul')[0];
+        ul.innerHTML = '';
+        
+        let nvals = 6; // this can be configured to any number greater than 1
+        let dn = 1.0 / (nvals - 1);
+        for (let n = 0; n <= 1; n += dn) {
+          let li = document.createElement('li');
+
+          // valueNormalized takes a number between 0 and 1 and
+          // returns the result value for the legend. 0 would yield
+          // the minimum and 1 would yield the maximum
+          li.innerText = contour.valueNormalized(n).toFixed(3);
+          ul.append(li);
+        }
+      }
+
+      function done() {  
+        api.releaseToken(
+          function() { console.log('token released'); },
+          apiError
+        );
+      }
+    </script>
+  </body>
+</html>
