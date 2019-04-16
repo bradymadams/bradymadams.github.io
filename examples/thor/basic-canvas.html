@@ -435,6 +435,8 @@
             if (plane !== undefined) {
               group.activateContourCutPlane(plane);
               planePosition.value = group.activeCutPlane.getPosition();
+            } else {
+              group.deactivateContourCutPlane();
             }
           }
         );
