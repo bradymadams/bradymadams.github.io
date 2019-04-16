@@ -1,7 +1,7 @@
 <html>
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/102/three.js"></script>
-    <script src="https://s3-us-west-2.amazonaws.com/teton-cdn/thorjs/thor-19.0.42.dev.js"></script>
+    <script src="https://s3-us-west-2.amazonaws.com/teton-cdn/thorjs/thor-19.0.43.dev.js"></script>
     <!--<script src="thor.dev.js"></script>-->
 
     <style type="text/css">
@@ -84,6 +84,11 @@
       </select>
       <div id="results-contour-component">
       </div>
+      <label>Cut Plane:</label>
+      <select id="results-cut-plane" disabled="true">
+      </select>
+      <label>Cut Plane Position:</label>
+      <input type="range" id="results-cut-plane-position" min="0" max="1" step="0.01" value="0.5">
     </div>
 
     <script>
@@ -202,6 +207,7 @@
           setupStepSelection(g2);
           setupDeformationSwitch(g2);
           setupContourSelection(g2);
+          setupCutPlaneSelection(g2);
         });
       }
 
@@ -401,6 +407,46 @@
           li.innerText = contour.valueNormalized(n).toFixed(3);
           ul.append(li);
         }
+      }
+
+      function setupCutPlaneSelection(group) {
+        let planeSelect = document.getElementById('results-cut-plane');
+        let planePosition = document.getElementById('results-cut-plane-position');
+
+        // Add a none option
+        let nonePlane = document.createElement('option');
+        nonePlane.innerText = '--';
+        nonePlane.value = 'N/A';
+        planeSelect.appendChild(nonePlane);
+
+        group.defaultCutPlanes.forEach(
+          p => {
+            let option = document.createElement('option');
+            option.innerText = p.name;
+            option.value = p.name;
+            planeSelect.appendChild(option);
+          }
+        );
+
+        planeSelect.addEventListener(
+          'change',
+          event => {
+            let plane = group.defaultCutPlanes.find(p => p.name === event.target.value);
+            if (plane !== undefined) {
+              group.activateContourCutPlane(plane);
+              planePosition.value = group.activeCutPlane.getPosition();
+            }
+          }
+        );
+
+        planeSelect.disabled = false;
+        
+        planePosition.addEventListener(
+          'change',
+          event => {
+            group.activeCutPlane.setPosition(Number.parseFloat(event.target.value));
+          }
+        );
       }
 
       function done() {  
