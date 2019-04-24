@@ -1,0 +1,88 @@
+<html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/102/three.js"></script>
+    <script src="contour-shader.js"></script>
+
+    <style type="text/css">
+    </style>
+
+    <script id="fragment_shader4" type="x-shader/x-fragment">
+      uniform float time;
+      const float saturation = 1.0;
+      const float lightness = 0.5;
+      const float numColors = 8.0;
+
+      varying float fcontour;
+
+      // https://www.rapidtables.com/convert/color/hsl-to-rgb.html
+
+      void main( void ) {
+        float rounded = floor(numColors * fcontour + 0.5) / numColors;
+        float H = 240.0 * (1.0 - rounded);
+
+        float C = (1.0 - abs(2.0 * lightness - 1.0)) * saturation;
+        float D = H / 60.0 - 2.0 * floor(H / 120.0);
+        float X = C * (1.0 - abs(D - 1.0));
+        float M = lightness - 0.5 * C;
+
+        float rp = 0.0;
+        float gp = 0.0;
+        float bp = 0.0;
+
+        if (H >= 0.0 && H < 60.0) {
+          rp = C; gp = X;
+        } else if (H >= 60.0 && H < 120.0) {
+          rp = X; gp = C;
+        } else if (H >= 120.0 && H < 180.0) {
+          gp = C; bp = X;
+        } else if (H >= 180.0 && H < 240.0) {
+          gp = X; bp = C;
+        } else if (H >= 240.0 && H < 300.0) {
+          rp = X; bp = C;
+        } else {
+          rp = C; bp = X;
+        }
+
+        float red = rp + M;
+        float green = gp + M;
+        float blue = bp + M;
+
+        gl_FragColor = vec4( red, green, blue, 0.5 );
+      }
+    </script>
+
+    <script id="vertexShader" type="x-shader/x-vertex">
+      uniform float time;
+      uniform float deformationScale;
+      
+      attribute vec3 displacement;
+      attribute float contour;
+
+      varying vec2 vUv;
+      varying vec3 pos;
+      varying float fcontour;
+
+      void main()
+      {
+        vUv = uv;
+        pos = position + deformationScale * displacement;
+        //pos.x = pos.x + sin(time);
+        //pos.y = pos.y + cos(time);
+        vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
+        gl_Position = projectionMatrix * mvPosition;
+
+        fcontour = contour;
+      }
+    </script>
+  </head>
+  <body>
+    <div id="canvas-container">
+    </div>
+
+    <script>
+      window.onload = function() {
+        init();
+      };
+    </script>
+  </body>
+</html>

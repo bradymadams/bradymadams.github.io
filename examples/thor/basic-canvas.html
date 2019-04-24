@@ -1,8 +1,10 @@
 <html>
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/102/three.js"></script>
-    <script src="https://s3-us-west-2.amazonaws.com/teton-cdn/thorjs/thor-19.0.43.dev.js"></script>
-    <!--<script src="thor.dev.js"></script>-->
+    <script src="https://s3-us-west-2.amazonaws.com/teton-cdn/thorjs/thor-19.0.52.dev.js"></script>
+    
+    <!--<script src="three.js"></script>
+    <script src="thor.dev.js"></script>-->
 
     <style type="text/css">
       .canvas-wrapper {
@@ -151,7 +153,8 @@
       function loadTemplate() {
         // get the model template
         api.feaTemplate(
-          'fde2afcf90124c9087b1c1ee44cf4e23',
+          //'fde2afcf90124c9087b1c1ee44cf4e23',
+          'c1cbda2f433f422bb8125c7896e70f7d',
           loadModelIntoCanvas,
           apiError
         );
@@ -201,6 +204,8 @@
           // on the outline mesh
           g1.surface.visible = false;
           g1.outline.visible = true;
+
+          g2.wireframe.visible = true;
 
           document.getElementById('btn-run-model').disabled = true;
 
