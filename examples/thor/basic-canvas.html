@@ -1,10 +1,11 @@
 <html>
   <head>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/102/three.js"></script>
-    <script src="https://s3-us-west-2.amazonaws.com/teton-cdn/thorjs/thor-19.0.52.dev.js"></script>
+    <!--<script src="three.js"></script>-->
     
-    <!--<script src="three.js"></script>
-    <script src="thor.dev.js"></script>-->
+    <script src="https://s3-us-west-2.amazonaws.com/teton-cdn/thorjs/thor-19.0.52.dev.js"></script>
+    <!--<script src="thor.dev.js"></script>-->
 
     <style type="text/css">
       .canvas-wrapper {
@@ -154,7 +155,8 @@
         // get the model template
         api.feaTemplate(
           //'fde2afcf90124c9087b1c1ee44cf4e23',
-          'c1cbda2f433f422bb8125c7896e70f7d',
+          //'c1cbda2f433f422bb8125c7896e70f7d',
+          '3d69b6cf1aab464cb231d790d5214341',
           loadModelIntoCanvas,
           apiError
         );
@@ -281,6 +283,7 @@
               document.getElementById('results-deformation-scale').innerText = 
               'Deformation Scale: ' + group.state.deformation.scaleFactor.toPrecision(3);
             }
+            setLegendValues(group.state.contour.legend);
           }
         );
 
