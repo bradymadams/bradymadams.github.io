@@ -1,0 +1,260 @@
+<html>
+  <head>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.2/paper-full.min.js" integrity="sha256-xT9jNx8tzepeeLwMeN985td1KYlkEOZJ/ReF9XMLoMU=" crossorigin="anonymous"></script>
+
+    <link href="https://fonts.googleapis.com/css?family=Dancing+Script|Montserrat" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha256-YLGeXaapI0/5IgZopewRJcFXomhRMlYYjugPLSyNjTY=" crossorigin="anonymous" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha256-CjSoeELFOcH0/uxWu6mC/Vlrc1AARqbm/jiiImDGV3s=" crossorigin="anonymous"></script>
+
+    <style type="text/css">
+      body {
+        font-family:'Montserrat',sans-serif;
+      }
+
+      .wrapper {
+        display: flex;
+        width: 100%;
+        align-items: stretch;
+      }
+
+      #sidebar {
+        min-width: 250px;
+        max-width: 250px;
+        min-height: 100vh;
+        padding: 10px 5px 0px 10px;
+      }
+
+      .layer-slider {
+        margin-top:10px;
+        margin-bottom:10px;
+      }
+
+      .dropzone {
+        background-color: #aeaeae;
+        width: 220px;
+        height: 60px;
+        padding: 8px;
+        border-radius: 5px;
+        text-align: center;
+      }
+
+      #mesh-canvas {
+        border: 1px #aeaeae solid;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="wrapper">
+      <nav id="sidebar">
+        <div class="control-panel">
+          <div class="dropzone" ondrop="dropHandler(event)" ondragover="dragOverHandler(event)">
+            <p>Drag and drop JSON file here</p>
+          </div>
+
+          <p class="name"></p>
+          <div class="layer-selector">
+            <p class="layer-number"></p>
+            <input class="layer-slider" type="range" min="1" max="1" value="1" class="slider"
+              oninput="drawLayer(this.value - 1)">
+            <div>
+              <button onclick="moveLayer(1)">Up 1</button>
+              <button onclick="moveLayer(-1)">Down 1</button>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <div>
+          <canvas id="mesh-canvas"></canvas>
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-12">
+        </div>
+      </div>
+    </div>
+
+    <script>
+      var teton = {
+        canvas: null,
+        mesh: null,
+        activeLayer: null,
+        activeLayerIndex: null
+      };
+
+      window.onload = function() {
+        // resize canvas
+        let canvas = document.getElementById('mesh-canvas');
+
+        let h = window.innerHeight - canvas.offsetTop;
+        let w = window.innerWidth - canvas.offsetLeft;
+        let s = Math.min(h, w) - 50;
+
+        canvas.width = s;
+        canvas.height = s;
+
+        teton.canvas = canvas;
+
+        paper.setup(teton.canvas);
+      }
+
+      function dragOverHandler(event) {
+        event.preventDefault();
+      }
+
+      function dropHandler(event) {
+        event.preventDefault();
+        
+        if (event.dataTransfer.items) {
+          var file = event.dataTransfer.items[0].getAsFile();
+        } else {
+          var file = event.dataTransfer.files[0];
+        }
+
+        $('.dropzone').find('p').text(file.name);
+
+        let fr = new FileReader();
+
+        fr.onload = e => {
+          let j = JSON.parse(e.target.result);
+          drawMesh(j);
+        };
+
+        fr.readAsText(file);
+      }
+
+      function unflattenPoints(flatPointsArray) {
+        let points = [];
+        let numPoints = flatPointsArray.length / 2;
+        for (let i = 0; i < numPoints; i++) {
+          let p = [
+            flatPointsArray[2 * i] / 1000.0,
+            flatPointsArray[2 * i + 1] / 1000.0
+          ];
+
+          points.push(p);
+        }
+        return points;
+      }
+
+      function drawMesh(mesh) {
+        teton.mesh = mesh;
+
+        let c = $('.control-panel');
+        c.find('.name').text(mesh.name);
+
+        let slider = $('.layer-slider')[0];
+        slider.min = 1;
+        slider.max = mesh.layers.length;
+        slider.value = 1;
+
+        drawLayer(0);
+
+        paper.view.draw();
+      }
+
+      function drawLayer(layerIndex) {
+        paper.project.clear();
+
+        layer = teton.mesh.layers[layerIndex];
+
+        teton.activeLayer = layer;
+        teton.activeLayerIndex = layerIndex;
+
+        let c = $('.control-panel');
+        c.find('.layer-number').text(layer.id);
+
+        let w = teton.canvas.width;
+        let h = teton.canvas.height;
+
+        // get the min and max coordinates of all points
+        let minx = Infinity; let miny = Infinity;
+        let maxx = -Infinity; let maxy = -Infinity;
+        for (let p of layer.parts) {
+          // we only need to look at the first area since all
+          // other areas lie fully within the first (exterior)
+          let area = p.areas[0];
+
+          let pts = unflattenPoints(area.points);
+
+          for (let pt of pts) {
+            minx = Math.min(minx, pt[0]);
+            miny = Math.min(miny, pt[1]);
+            maxx = Math.max(maxx, pt[0]);
+            maxy = Math.max(maxy, pt[1]);
+          }
+        }
+
+        let scale = 0.9 * (paper.view.bounds.right - paper.view.bounds.left) / (maxx - minx);
+
+        let midpoint = new paper.Point(0.5 * (minx + maxx), 0.5 * (miny + maxy));
+        let translateVec = new paper.Point( paper.view.center.x - midpoint.x, paper.view.center.y - midpoint.y );
+
+        paper.view.translate(translateVec);
+        paper.view.scale(scale)
+        
+        for (let p of layer.parts) {
+          drawPart(p);
+        }
+      }
+
+      function drawPart(part) {
+        for (let area of part.areas) {
+          drawPrintArea(area);
+        }
+      }
+
+      function drawPrintArea(area) {
+        let path = new paper.Path();
+
+        path.setStrokeScaling(false);
+
+        if (area.type === 'Exterior' || area.type === 'Hole') {
+          path.strokeColor = '#000000';
+        } else if (area.type === 'Wall') {
+          path.strokeColor = '#ff0000';
+        } else if (area.type === 'Skin') {
+          path.strokeColor = '#0000ff';
+        } else {
+          path.strokeColor = '#cccccc';
+        }
+
+        let points = unflattenPoints(area.points);
+
+        let start = new paper.Point(points[0][0], points[0][1]);
+
+        path.moveTo(start);
+
+        for (i = 1; i < points.length; i++) {
+          path.lineTo(new paper.Point(points[i][0], points[i][1]));
+        }
+
+        path.lineTo(start);
+      }
+
+      function moveLayer(step) {
+        let index = teton.activeLayerIndex + step;
+
+        if (index < 0) {
+          index = 0;
+        }
+
+        if (index >= teton.mesh.layers.length) {
+          index = teton.mesh.layers.length - 1;
+        }
+
+        let slider = $('.layer-slider');
+        slider.val(index + 1);
+        drawLayer(index);
+      }
+    </script>
+  </body>
+</html>
