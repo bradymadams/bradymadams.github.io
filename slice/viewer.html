@@ -96,10 +96,13 @@
 
         let h = window.innerHeight - canvas.offsetTop;
         let w = window.innerWidth - canvas.offsetLeft;
-        let s = Math.min(h, w) - 50;
 
-        canvas.width = s;
-        canvas.height = s;
+        let margin = 50;
+
+        //let s = Math.min(h, w) - margin;
+
+        canvas.width = w - margin;
+        canvas.height = h - margin;
 
         teton.canvas = canvas;
 
@@ -156,9 +159,47 @@
         slider.max = mesh.layers.length;
         slider.value = 1;
 
+        setupCanvas();
         drawLayer(0);
 
         paper.view.draw();
+      }
+
+      function setupCanvas() {
+        let w = teton.canvas.width;
+        let h = teton.canvas.height;
+
+        // get the min and max coordinates of all points
+        let minx = Infinity; let miny = Infinity;
+        let maxx = -Infinity; let maxy = -Infinity;
+
+        for (let l of teton.mesh.layers) {
+          for (let p of l.parts) {
+            // we only need to look at the first area since all
+            // other areas lie fully within the first (exterior)
+            let area = p.areas[0];
+
+            let pts = unflattenPoints(area.points);
+
+            for (let pt of pts) {
+              minx = Math.min(minx, pt[0]);
+              miny = Math.min(miny, pt[1]);
+              maxx = Math.max(maxx, pt[0]);
+              maxy = Math.max(maxy, pt[1]);
+            }
+          }
+        }
+
+        let scaleX = 0.9 * (paper.view.bounds.right - paper.view.bounds.left) / (maxx - minx);
+        let scaleY = 0.9 * (paper.view.bounds.top - paper.view.bounds.bottom) / (maxy - miny);
+
+        let scale = Math.abs(Math.min(scaleX, scaleY));
+
+        let midpoint = new paper.Point(0.5 * (minx + maxx), 0.5 * (miny + maxy));
+        let translateVec = new paper.Point( paper.view.center.x - midpoint.x, paper.view.center.y - midpoint.y );
+
+        paper.view.translate(translateVec);
+        paper.view.scale(scale)
       }
 
       function drawLayer(layerIndex) {
@@ -171,35 +212,6 @@
 
         let c = $('.control-panel');
         c.find('.layer-number').text(layer.id);
-
-        let w = teton.canvas.width;
-        let h = teton.canvas.height;
-
-        // get the min and max coordinates of all points
-        let minx = Infinity; let miny = Infinity;
-        let maxx = -Infinity; let maxy = -Infinity;
-        for (let p of layer.parts) {
-          // we only need to look at the first area since all
-          // other areas lie fully within the first (exterior)
-          let area = p.areas[0];
-
-          let pts = unflattenPoints(area.points);
-
-          for (let pt of pts) {
-            minx = Math.min(minx, pt[0]);
-            miny = Math.min(miny, pt[1]);
-            maxx = Math.max(maxx, pt[0]);
-            maxy = Math.max(maxy, pt[1]);
-          }
-        }
-
-        let scale = 0.9 * (paper.view.bounds.right - paper.view.bounds.left) / (maxx - minx);
-
-        let midpoint = new paper.Point(0.5 * (minx + maxx), 0.5 * (miny + maxy));
-        let translateVec = new paper.Point( paper.view.center.x - midpoint.x, paper.view.center.y - midpoint.y );
-
-        paper.view.translate(translateVec);
-        paper.view.scale(scale)
         
         for (let p of layer.parts) {
           drawPart(p);
