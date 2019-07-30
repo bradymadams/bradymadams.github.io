@@ -58,9 +58,13 @@
             <p>Drag and drop JSON file here</p>
           </div>
 
-          <p class="name"></p>
+          <div class="meta-info">
+            <p class="name">Name: <span></span></p>
+            <p class="layers"># Layers: <span></span></p>
+            <p class="number">Selected Layer: <span></span></p>
+            <p class="parts"># Parts: <span></span></p>
+          </div>
           <div class="layer-selector">
-            <p class="layer-number"></p>
             <input class="layer-slider" type="range" min="1" max="1" value="1" class="slider"
               oninput="drawLayer(this.value - 1)">
             <div>
@@ -140,7 +144,7 @@
         for (let i = 0; i < numPoints; i++) {
           let p = [
             flatPointsArray[2 * i] / 1000.0,
-            flatPointsArray[2 * i + 1] / 1000.0
+            -flatPointsArray[2 * i + 1] / 1000.0
           ];
 
           points.push(p);
@@ -152,7 +156,10 @@
         teton.mesh = mesh;
 
         let c = $('.control-panel');
-        c.find('.name').text(mesh.name);
+        let info = c.find('.meta-info');
+        
+        info.find('.name').find('span').text(mesh.name);
+        info.find('.layers').find('span').text(mesh.layers.length);
 
         let slider = $('.layer-slider')[0];
         slider.min = 1;
@@ -211,7 +218,10 @@
         teton.activeLayerIndex = layerIndex;
 
         let c = $('.control-panel');
-        c.find('.layer-number').text(layer.id);
+        let info = c.find('.meta-info');
+
+        info.find('.number').find('span').text(layer.id);
+        info.find('.parts').find('span').text(layer.parts.length);
         
         for (let p of layer.parts) {
           drawPart(p);
@@ -229,14 +239,18 @@
 
         path.setStrokeScaling(false);
 
-        if (area.type === 'Exterior' || area.type === 'Hole') {
+        if (area.type === 'Exterior') {
           path.strokeColor = '#000000';
-        } else if (area.type === 'Wall') {
+        } else if (area.type === 'Hole') {
           path.strokeColor = '#ff0000';
+        } else if (area.type === 'Wall') {
+          path.strokeColor = '#cccccc';
         } else if (area.type === 'Skin') {
           path.strokeColor = '#0000ff';
+        } else if (area.type === 'Infill') {
+          path.strokeColor = '#00ff00';
         } else {
-          path.strokeColor = '#cccccc';
+          path.strokeColor = '#ffff00';
         }
 
         let points = unflattenPoints(area.points);
