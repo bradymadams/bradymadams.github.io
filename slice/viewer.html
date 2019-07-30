@@ -265,6 +265,14 @@
 
         let div = $('<div></div>');
 
+        div.on('mouseover', function(event) {
+          partLayer.style.strokeWidth = 3;
+        });
+
+        div.on('mouseout', function(event) {
+          partLayer.style.strokeWidth = 1;
+        });
+
         div.append(cb);
         div.append(cblbl);
 
