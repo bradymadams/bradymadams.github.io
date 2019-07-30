@@ -47,6 +47,14 @@
         border: 1px #aeaeae solid;
         margin-top: 10px;
       }
+
+      .layer-selector, .part-selector {
+        padding:5px 3px 5px 3px;
+        margin-top:5px;
+        margin-bottom:5px;
+        border: 1px solid #808080;
+        border-radius: 5px;
+      }
     </style>
   </head>
   <body>
@@ -71,6 +79,9 @@
               <button onclick="moveLayer(1)">Up 1</button>
               <button onclick="moveLayer(-1)">Down 1</button>
             </div>
+          </div>
+          <div class="part-selector">
+
           </div>
         </div>
       </nav>
@@ -222,6 +233,9 @@
 
         info.find('.number').find('span').text(layer.id);
         info.find('.parts').find('span').text(layer.parts.length);
+
+        // clear any existing part selection checkboxes
+        $('.control-panel .part-selector').html('');
         
         for (let p of layer.parts) {
           drawPart(p);
@@ -229,9 +243,32 @@
       }
 
       function drawPart(part) {
+        let partLayer = new paper.Layer();
+        
         for (let area of part.areas) {
-          drawPrintArea(area);
+          path = drawPrintArea(area);
+          partLayer.addChild(path);
         }
+
+        // create a check box to toggle part paper.Layer visibility
+        let sel = $('.control-panel .part-selector');
+
+        let cb = $(`<input type="checkbox" checked name="part${part.id}"/>`);
+        let cblbl = $(`<label for="part${part.id}">Part ${part.id}</label>`);
+
+        cb.on(
+          'change',
+          function(event) {
+            partLayer.visible = cb.prop('checked');
+          }
+        );
+
+        let div = $('<div></div>');
+
+        div.append(cb);
+        div.append(cblbl);
+
+        sel.append(div);
       }
 
       function drawPrintArea(area) {
@@ -264,6 +301,8 @@
         }
 
         path.lineTo(start);
+
+        return path;
       }
 
       function moveLayer(step) {
