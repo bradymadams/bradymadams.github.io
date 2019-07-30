@@ -214,7 +214,7 @@
         let scaleX = 0.9 * (paper.view.bounds.right - paper.view.bounds.left) / (maxx - minx);
         let scaleY = 0.9 * (paper.view.bounds.top - paper.view.bounds.bottom) / (maxy - miny);
 
-        let scale = Math.abs(Math.min(scaleX, scaleY));
+        let scale = Math.min(Math.abs(scaleX), Math.abs(scaleY));
 
         let midpoint = new paper.Point(0.5 * (minx + maxx), 0.5 * (miny + maxy));
         let translateVec = new paper.Point( paper.view.center.x - midpoint.x, paper.view.center.y - midpoint.y );
@@ -300,6 +300,8 @@
           path.strokeColor = '#0000ff';
         } else if (area.type === 'Infill') {
           path.strokeColor = '#00ff00';
+        } else if (area.type === 'Gap') {
+          path.strokeColor = '#ff96ec';
         } else {
           path.strokeColor = '#ffff00';
         }
