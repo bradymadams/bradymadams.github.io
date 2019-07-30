@@ -70,6 +70,9 @@
             <p class="name">Name: <span></span></p>
             <p class="layers"># Layers: <span></span></p>
             <p class="number">Selected Layer: <span></span></p>
+            <p class="layer-z">Layer Z: <span></span></p>
+            <p class="layer-height">Layer Height: <span></span></p>
+            <p class="line-width">Line Width: <span></span></p>
             <p class="parts"># Parts: <span></span></p>
           </div>
           <div class="layer-selector">
@@ -233,6 +236,9 @@
 
         info.find('.number').find('span').text(layer.id);
         info.find('.parts').find('span').text(layer.parts.length);
+        info.find('.layer-z').find('span').text(layer.height / 1000);
+        info.find('.layer-height').find('span').text(layer.lineThickness / 1000);
+        info.find('.line-width').find('span').text(layer.lineWidth / 1000);
 
         // clear any existing part selection checkboxes
         $('.control-panel .part-selector').html('');
