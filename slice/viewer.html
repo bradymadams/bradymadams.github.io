@@ -105,7 +105,16 @@
         canvas: null,
         mesh: null,
         activeLayer: null,
-        activeLayerIndex: null
+        activeLayerIndex: null,
+        colors: {
+          Exterior: ['#000000', 2, null],
+          Hole: ['#ff0000', 1, null],
+          Wall: ['#ffc800', 1, null],
+          Skin: ['#4b2bff', 1, null],
+          Infill: ['#00b312', 1, null],
+          Gap: ['#ee00ff', 1, [2, 2]],
+          Unknown: ['#555555', 1, [10, 4]]
+        }
       };
 
       window.onload = function() {
@@ -290,21 +299,15 @@
 
         path.setStrokeScaling(false);
 
-        if (area.type === 'Exterior') {
-          path.strokeColor = '#000000';
-        } else if (area.type === 'Hole') {
-          path.strokeColor = '#ff0000';
-        } else if (area.type === 'Wall') {
-          path.strokeColor = '#cccccc';
-        } else if (area.type === 'Skin') {
-          path.strokeColor = '#0000ff';
-        } else if (area.type === 'Infill') {
-          path.strokeColor = '#00ff00';
-        } else if (area.type === 'Gap') {
-          path.strokeColor = '#ff96ec';
-        } else {
-          path.strokeColor = '#ffff00';
+        let pathStyle = teton.colors[area.type];
+
+        if (pathStyle === undefined) {
+          pathStyle = teton.colors.Unknown;
         }
+
+        path.strokeColor = pathStyle[0];
+        path.strokeWidth = pathStyle[1];
+        path.dashArray = pathStyle[2];
 
         let points = unflattenPoints(area.points);
 
