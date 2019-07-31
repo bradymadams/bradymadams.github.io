@@ -19,10 +19,12 @@
       .wrapper {
         display: flex;
         width: 100%;
+        max-height: 100vh;
         align-items: stretch;
       }
 
       #sidebar {
+        overflow-y: scroll;
         min-width: 250px;
         max-width: 250px;
         min-height: 100vh;
@@ -53,7 +55,7 @@
         margin-top: 10px;
       }
 
-      .control-panel div {
+      .control-panel div.sub-panel {
         padding:5px 3px 5px 3px;
         margin-top:5px;
         margin-bottom:5px;
@@ -71,16 +73,16 @@
             <p>Drag and drop JSON file here</p>
           </div>
 
-          <div>
+          <div class="sub-panel">
             <select class="mesh-selector" onchange="selectMeshById(this.value)"></select>
           </div>
 
-          <div class="toggle-mesh">
+          <div class="sub-panel toggle-mesh">
             <input type="checkbox" name="display-mesh" checked onchange="teton.activeMesh.paperLayer.visible = this.checked">
             <label for="display-mesh">Display</label>
           </div>
 
-          <div class="meta-info">
+          <div class="sub-panel meta-info">
             <p class="name">Name: <span></span></p>
             <p class="layers"># Layers: <span></span></p>
             <p class="number">Selected Layer: <span></span></p>
@@ -90,7 +92,7 @@
             <p class="parts"># Parts: <span></span></p>
           </div>
 
-          <div class="layer-selector">
+          <div class="sub-panel layer-selector">
             <input class="layer-slider" type="range" min="1" max="1" value="1" class="slider"
               oninput="selectLayer(this.value - 1)">
             <div>
@@ -99,7 +101,7 @@
             </div>
           </div>
 
-          <div class="part-selector">
+          <div class="sub-panel part-selector">
           </div>
         </div>
       </nav>
