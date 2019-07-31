@@ -53,7 +53,7 @@
         margin-top: 10px;
       }
 
-      .layer-selector, .part-selector {
+      .control-panel div {
         padding:5px 3px 5px 3px;
         margin-top:5px;
         margin-bottom:5px;
@@ -71,7 +71,13 @@
             <p>Drag and drop JSON file here</p>
           </div>
 
-          <div class="mesh-selector">
+          <div>
+            <select class="mesh-selector" onchange="selectMeshById(this.value)"></select>
+          </div>
+
+          <div class="toggle-mesh">
+            <input type="checkbox" name="display-mesh" checked onchange="teton.activeMesh.paperLayer.visible = this.checked">
+            <label for="display-mesh">Display</label>
           </div>
 
           <div class="meta-info">
@@ -86,7 +92,7 @@
 
           <div class="layer-selector">
             <input class="layer-slider" type="range" min="1" max="1" value="1" class="slider"
-              oninput="drawLayer(this.value - 1)">
+              oninput="selectLayer(this.value - 1)">
             <div>
               <button onclick="moveLayer(1)">Up 1</button>
               <button onclick="moveLayer(-1)">Down 1</button>
@@ -112,8 +118,8 @@
     <script>
       var teton = {
         canvas: null,
-        mesh: null,
-        activeLayer: null,
+        meshes: null,
+        activeMesh: null,
         activeLayerIndex: null,
         zoom: {
           velocity: 0.01,
@@ -211,68 +217,109 @@
       }
 
       function drawAllMeshes(meshes) {
+        teton.meshes = meshes.meshes;
+
         // setup mesh selector
         let c = $('.control-panel');
         let ms = c.find('.mesh-selector');
+        let slider = $('.layer-slider')[0];
+
+        slider.min = 1;
+        slider.max = 1;
+        slider.value = 1;
 
         ms.html('');
 
-        for (let m of meshes.meshes) {
-          let rbDiv = $('<div></div>');
-          let rb = $(`<input type="radio" name="mesh" value="${m.id}" id="mesh-${m.id}">`);
-          let rbLbl = $(`<label for="mesh-${m.id}">${m.name}</label>`);
+        for (let m of teton.meshes) {
+          let opt = $(`<option value="${m.id}">${m.name}</option>`);
 
-          if (m.id === 1) {
-            rb.prop('checked', true);
-          }
+          ms.append(opt);
 
-          rb.change(
-            function() {
-              if (this.checked) {
-                drawMesh(meshes.meshes[this.value - 1]);
-              }
-            }
-          );
-
-          rbDiv.append(rb);
-          rbDiv.append(rbLbl);
-
-          ms.append(rbDiv);
+          slider.max = Math.max(slider.max, m.layers.length);
         }
-
-        drawMesh(meshes.meshes[0]);
-      }
-
-      function drawMesh(mesh) {
-        teton.mesh = mesh;
-
-        let c = $('.control-panel');
-        let info = c.find('.meta-info');
-        
-        info.find('.name').find('span').text(mesh.name);
-        info.find('.layers').find('span').text(mesh.layers.length);
-
-        let slider = $('.layer-slider')[0];
-        slider.min = 1;
-        slider.max = mesh.layers.length;
-        slider.value = 1;
 
         setupCanvas();
 
-        // draw the first layer with parts
-        let drawLayerIndex = 0;
-        for (i = 0; i < mesh.layers.length; i++) {
-          if (mesh.layers[i].parts.length > 0) {
-            drawLayerIndex = i;
-            break;
-          }
-        }
-
-        $('.layer-slider').val(drawLayerIndex + 1);
-
-        drawLayer(drawLayerIndex);
+        drawAllMeshLayers(0);
 
         paper.view.draw();
+
+        selectMesh(teton.meshes[0]);
+      }
+
+      function selectMeshById(id) {
+        id = parseInt(id);
+        let mesh = teton.meshes.find(m => m.id === id);
+        selectMesh(mesh);
+      }
+
+      function selectMesh(mesh) {
+        teton.activeMesh = mesh;
+
+        let c = $('.control-panel');
+
+        c.find('.toggle-mesh input').prop('checked', mesh.paperLayer.visible);
+
+        let info = c.find('.meta-info');
+        info.find('.name').find('span').text(mesh.name);
+        info.find('.layers').find('span').text(mesh.layers.length);
+
+        updateLayerInfo();
+      }
+
+      function updateLayerInfo() {
+        let layer = teton.activeMesh.layers[teton.activeLayerIndex];
+
+        if (layer === undefined) {
+          layer = {
+            id: 'N/A',
+            parts: [],
+            height: 0.0,
+            lineThickness: 0.0,
+            lineWidth: 0.0
+          };
+        }
+
+        let c = $('.control-panel');
+        let info = c.find('.meta-info');
+
+        info.find('.number').find('span').text(layer.id);
+        info.find('.parts').find('span').text(layer.parts.length);
+        info.find('.layer-z').find('span').text(layer.height / 1000);
+        info.find('.layer-height').find('span').text(layer.lineThickness / 1000);
+        info.find('.line-width').find('span').text(layer.lineWidth / 1000);
+
+        // create a check box to toggle part paper.Layer visibility
+        let sel = c.find('.part-selector');
+
+        sel.html('');
+
+        for (let p of layer.parts) {
+          let cb = $(`<input type="checkbox" checked name="part${p.id}"/>`);
+          let cblbl = $(`<label for="part${p.id}">Part ${p.id}</label>`);
+
+          cb.on(
+            'change',
+            function(event) {
+              p.paperLayer.visible = cb.prop('checked');
+            }
+          );
+
+          let div = $('<div></div>');
+
+          div.on('mouseover', function(event) {
+            p.paperLayer.style.strokeWidth = 3;
+          });
+
+          div.on('mouseout', function(event) {
+            p.paperLayer.style.strokeWidth = 1;
+          });
+
+          div.append(cb);
+          div.append(cblbl);
+
+          sel.append(div);
+        }
       }
 
       function setupCanvas() {
@@ -283,19 +330,21 @@
         let minx = Infinity; let miny = Infinity;
         let maxx = -Infinity; let maxy = -Infinity;
 
-        for (let l of teton.mesh.layers) {
-          for (let p of l.parts) {
-            // we only need to look at the first area since all
-            // other areas lie fully within the first (exterior)
-            let area = p.areas[0];
+        for (let m of teton.meshes) {
+          for (let l of m.layers) {
+            for (let p of l.parts) {
+              // we only need to look at the first area since all
+              // other areas lie fully within the first (exterior)
+              let area = p.areas[0];
 
-            let pts = unflattenPoints(area.points);
+              let pts = unflattenPoints(area.points);
 
-            for (let pt of pts) {
-              minx = Math.min(minx, pt[0]);
-              miny = Math.min(miny, pt[1]);
-              maxx = Math.max(maxx, pt[0]);
-              maxy = Math.max(maxy, pt[1]);
+              for (let pt of pts) {
+                minx = Math.min(minx, pt[0]);
+                miny = Math.min(miny, pt[1]);
+                maxx = Math.max(maxx, pt[0]);
+                maxy = Math.max(maxy, pt[1]);
+              }
             }
           }
         }
@@ -312,66 +361,45 @@
         paper.view.scale(scale)
       }
 
-      function drawLayer(layerIndex) {
+      function drawAllMeshLayers(layerIndex) {
+        teton.activeLayerIndex = layerIndex;
+        
         paper.project.clear();
 
-        layer = teton.mesh.layers[layerIndex];
-
-        teton.activeLayer = layer;
-        teton.activeLayerIndex = layerIndex;
-
-        let c = $('.control-panel');
-        let info = c.find('.meta-info');
-
-        info.find('.number').find('span').text(layer.id);
-        info.find('.parts').find('span').text(layer.parts.length);
-        info.find('.layer-z').find('span').text(layer.height / 1000);
-        info.find('.layer-height').find('span').text(layer.lineThickness / 1000);
-        info.find('.line-width').find('span').text(layer.lineWidth / 1000);
-
-        // clear any existing part selection checkboxes
-        $('.control-panel .part-selector').html('');
-        
-        for (let p of layer.parts) {
-          drawPart(p);
+        for (let m of teton.meshes) {
+          drawLayer(m, layerIndex);
         }
       }
 
+      function drawLayer(mesh, layerIndex) {
+        let meshLayer = new paper.Layer();
+
+        if (mesh.paperLayer !== undefined) {
+          meshLayer.visible = mesh.paperLayer.visible;
+        }
+
+        if (layerIndex >= mesh.layers.length) {
+          return;
+        }
+
+        layer = mesh.layers[layerIndex];
+        
+        for (let p of layer.parts) {
+          meshLayer.addChild(drawPart(p));
+        }
+
+        mesh.paperLayer = meshLayer;
+      }
+
       function drawPart(part) {
-        let partLayer = new paper.Layer();
+        part.paperLayer = new paper.Layer();
         
         for (let area of part.areas) {
           path = drawPrintArea(area);
-          partLayer.addChild(path);
+          part.paperLayer.addChild(path);
         }
 
-        // create a check box to toggle part paper.Layer visibility
-        let sel = $('.control-panel .part-selector');
-
-        let cb = $(`<input type="checkbox" checked name="part${part.id}"/>`);
-        let cblbl = $(`<label for="part${part.id}">Part ${part.id}</label>`);
-
-        cb.on(
-          'change',
-          function(event) {
-            partLayer.visible = cb.prop('checked');
-          }
-        );
-
-        let div = $('<div></div>');
-
-        div.on('mouseover', function(event) {
-          partLayer.style.strokeWidth = 3;
-        });
-
-        div.on('mouseout', function(event) {
-          partLayer.style.strokeWidth = 1;
-        });
-
-        div.append(cb);
-        div.append(cblbl);
-
-        sel.append(div);
+        return part.paperLayer;
       }
 
       function drawPrintArea(area) {
@@ -411,13 +439,20 @@
           index = 0;
         }
 
-        if (index >= teton.mesh.layers.length) {
-          index = teton.mesh.layers.length - 1;
+        let maxIndex = parseInt($('.layer-selector input')[0].max) - 1;
+
+        if (index > maxIndex) {
+          index = maxIndex;
         }
 
+        selectLayer(index);
+      }
+
+      function selectLayer(index) {
         let slider = $('.layer-slider');
         slider.val(index + 1);
-        drawLayer(index);
+        drawAllMeshLayers(index);
+        updateLayerInfo();
       }
     </script>
   </body>
