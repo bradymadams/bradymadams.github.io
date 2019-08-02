@@ -88,6 +88,7 @@
             <p class="mesh-type">Mesh Type: <span></span></p>
             <p class="infill-pattern">Infill Pattern: <span></span></p>
             <p class="infill-line-spacing">Infill Line Spacing: <span></span></p>
+            <p class="infill-angles">Infill Angles: <span></span></p>
             <div class="sub-panel">
               <p class="number">Selected Layer: <span></span></p>
               <p class="layer-z">Layer Z: <span></span></p>
@@ -274,6 +275,7 @@
         info.find('.mesh-type').find('span').text(mesh.type);
         info.find('.infill-pattern').find('span').text(mesh.infillPattern);
         info.find('.infill-line-spacing').find('span').text(mesh.infillLineSpacing / 1000.0);
+        info.find('.infill-angles').find('span').text(mesh.infillAngles);
 
         updateLayerInfo();
       }
