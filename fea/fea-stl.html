@@ -74,8 +74,9 @@
           <div class="sub-panel">
               <input class="max-angle" type="range" min="0" max="180" value="10" class="slider" oninput="changeMaxAngle(this.value)" style="width:95%">
               <label for="max-angle">Max Angle Inclusion = <span class="max-angle-label">10</span></label>
-              <!--<input type="checkbox" name="clamp-angle" checked onchange="">
-              <label for="clamp-angle">Clamp Angle</label>-->
+              <br/>
+              <input type="checkbox" name="clamp-angle" checked onchange="toggleClampAngle(this.checked)">
+              <label for="clamp-angle">Clamp Angle</label>
             </div>
         </div>
       </nav>

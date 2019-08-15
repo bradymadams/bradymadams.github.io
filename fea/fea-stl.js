@@ -193,29 +193,26 @@ class FaceSelector {
     let geom = this.mesh.geometry;
     let faces = geom.faces;
 
-    let fwalker = new FaceWalker(this._edgeFaces, this._faceEdges, faceIndex);
+    let fwalker = new FaceWalker(this._edgeFaces, this._faceEdges, faceIndex, this.clampAngle);
 
     let maxAngleRadians = this.maxAngle * Math.PI / 180.0;
 
     let checkForFaceContinuity = (face1, face2) => Math.abs(face1.normal.angleTo(face2.normal)) < maxAngleRadians;
 
     while (!fwalker.done()) {
-      let nextFaceIndex = fwalker.nextFace();
+      let faceIndices = fwalker.nextFace();
+
+      let nextFaceIndex = faceIndices[0];
+      let currentFaceIndex = this.clampAngle ? faceIndex : faceIndices[1];
 
       let partOfContinuousFace = false;
 
-      if (this.clampAngle) {
-        // compare nextFace normal to face0 normal
-        partOfContinuousFace = checkForFaceContinuity(faces[faceIndex], faces[nextFaceIndex]);
-      } else {
-        // compare nextFace normal to connected face normal
-        partOfContinuousFace = checkForFaceContinuity(faces[currentFaceIndex], faces[nextFaceIndex]);
-      }
+      partOfContinuousFace = checkForFaceContinuity(faces[currentFaceIndex], faces[nextFaceIndex]);
 
       if (partOfContinuousFace) {
-        fwalker.include(nextFaceIndex);
+        fwalker.include(nextFaceIndex, currentFaceIndex);
       } else {
-        fwalker.exclude(nextFaceIndex);
+        fwalker.exclude(nextFaceIndex, currentFaceIndex);
       }
     }
 
@@ -266,15 +263,16 @@ class FaceSelector {
 }
 
 class FaceWalker {
-  constructor(edgeFaces, faceEdges, startingFace) {
+  constructor(edgeFaces, faceEdges, startingFace, fromStartingFace) {
     this.edgeFaces = edgeFaces;
     this.faceEdges = faceEdges;
     this.startingFace = startingFace;
+    this.fromStartingFace = fromStartingFace;
 
     this.allFaces = new Set([this.startingFace]);
 
-    this._facesToCheck = new Set();
-    this._checkedFaces = new Set();
+    this._facesToCheck = new Map();
+    this._checkedFaces = new Map();
 
     this._addFacesConnectedToEdgeToCheckList(this.startingFace);
   }
@@ -284,10 +282,49 @@ class FaceWalker {
     for (let e of edges) {
       let faces = this.edgeFaces.get(e);
       for (let f of faces) {
+
+        let fromFace = this.fromStartingFace ? this.startingFace : faceIndex;
+        
         if (!this._checkedFaces.has(f)) {
-          this._facesToCheck.add(f);
+
+          this._addFaceToCheck(f, fromFace);
+
+        } else {
+
+          if (!this._checkedFaces.get(f).has(fromFace)) {
+            this._addFaceToCheck(f, fromFace);
+          }
+
         }
+
       }
+    }
+  }
+
+  _addFaceToCheck(face, fromFace) {
+    if (face === fromFace) {
+      return;
+    }
+    if (!this._facesToCheck.has(face)) {
+      this._facesToCheck.set(face, new Set([fromFace]));
+    } else {
+      this._facesToCheck.get(face).add(fromFace);
+    }
+  }
+
+  _removeFaceToCheck(face, fromFace) {
+    let faces = this._facesToCheck.get(face);
+    faces.delete(fromFace);
+    if (faces.size === 0) {
+      this._facesToCheck.delete(face);
+    }
+  }
+
+  _addCheckedFace(face, fromFace) {
+    if (!this._checkedFaces.has(face)) {
+      this._checkedFaces.set(face, new Set([fromFace]));
+    } else {
+      this._checkedFaces.get(face).add(fromFace);
     }
   }
 
@@ -296,19 +333,21 @@ class FaceWalker {
   }
 
   nextFace() {
-    return this._facesToCheck.values().next().value;
+    let face = this._facesToCheck.keys().next().value;
+    let fromFace = this._facesToCheck.get(face).values().next().value;
+    return [face, fromFace];
   }
 
-  include(faceIndex) {
-    this._facesToCheck.delete(faceIndex);
-    this._checkedFaces.add(faceIndex);
-    this.allFaces.add(faceIndex);
-    this._addFacesConnectedToEdgeToCheckList(faceIndex);
+  include(face, fromFace) {
+    this._removeFaceToCheck(face, fromFace);
+    this._addCheckedFace(face, fromFace);
+    this.allFaces.add(face);
+    this._addFacesConnectedToEdgeToCheckList(face);
   }
 
-  exclude(faceIndex) {
-    this._facesToCheck.delete(faceIndex);
-    this._checkedFaces.add(faceIndex);
+  exclude(face, fromFace) {
+    this._removeFaceToCheck(face, fromFace);
+    this._addCheckedFace(face, fromFace);
   }
 }
 
@@ -323,6 +362,9 @@ function changeMaxAngle(angle) {
   $('.max-angle-label').text(faceSelector.maxAngle);
 }
 
+function toggleClampAngle(on) {
+  faceSelector.clampAngle = on;
+}
 
 // drag and drop STL
 
