@@ -192,50 +192,15 @@ class FaceSelector {
   getFaces(faceIndex) {
     let geom = this.mesh.geometry;
     let faces = geom.faces;
-    let face0 = faces[faceIndex];
 
-    let continuousFaces = new Set([faceIndex]); // will hold the final list of connected faces
-    let facesToCheck = new Set();
-    let facesChecked = new Set([faceIndex]);
-
-    let currentFaceIndex = faceIndex;
-    let nextFaceIndex = null;
+    let fwalker = new FaceWalker(this._edgeFaces, this._faceEdges, faceIndex);
 
     let maxAngleRadians = this.maxAngle * Math.PI / 180.0;
 
     let checkForFaceContinuity = (face1, face2) => Math.abs(face1.normal.angleTo(face2.normal)) < maxAngleRadians;
 
-    while (true) {
-      let currentEdges = this._faceEdges[currentFaceIndex];
-
-      // for all of the edges that are part of the current face
-      // get a list of all other face indices attached to the edge
-      for (let e = 0; e < currentEdges.length; e++) {
-        let connectedFaces = this._edgeFaces.get(currentEdges[e]);
-
-        for (let f = 0; f < connectedFaces.length; f++) {
-          let fi = connectedFaces[f];
-
-          // if this face has already been checked do not add it to
-          // the list of faces to check and continue on
-          if (this.clampAngle && facesChecked.has(fi)) {
-            continue;
-          }
-
-          facesToCheck.add(fi);
-        }
-      }
-
-      // if facesToCheck is empty there's nothing left to check
-      // so we exit the loop and we're done
-      if (facesToCheck.size == 0) {
-        break;
-      }
-      
-      nextFaceIndex = facesToCheck.values().next().value;
-      
-      facesToCheck.delete(nextFaceIndex);
-      facesChecked.add(nextFaceIndex);
+    while (!fwalker.done()) {
+      let nextFaceIndex = fwalker.nextFace();
 
       let partOfContinuousFace = false;
 
@@ -244,15 +209,18 @@ class FaceSelector {
         partOfContinuousFace = checkForFaceContinuity(faces[faceIndex], faces[nextFaceIndex]);
       } else {
         // compare nextFace normal to connected face normal
+        partOfContinuousFace = checkForFaceContinuity(faces[currentFaceIndex], faces[nextFaceIndex]);
       }
 
       if (partOfContinuousFace) {
-        continuousFaces.add(nextFaceIndex);
-        currentFaceIndex = nextFaceIndex;
+        fwalker.include(nextFaceIndex);
+      } else {
+        fwalker.exclude(nextFaceIndex);
       }
     }
 
-    return continuousFaces;
+    //return continuousFaces;
+    return fwalker.allFaces;
   }
 
   _createInternalMaps(mustShareEdge) {
@@ -294,6 +262,53 @@ class FaceSelector {
 
     this._edgeFaces = edges; // edge keys to connected faces (2 faces)
     this._faceEdges = faceEdges; // face index to edge keys
+  }
+}
+
+class FaceWalker {
+  constructor(edgeFaces, faceEdges, startingFace) {
+    this.edgeFaces = edgeFaces;
+    this.faceEdges = faceEdges;
+    this.startingFace = startingFace;
+
+    this.allFaces = new Set([this.startingFace]);
+
+    this._facesToCheck = new Set();
+    this._checkedFaces = new Set();
+
+    this._addFacesConnectedToEdgeToCheckList(this.startingFace);
+  }
+
+  _addFacesConnectedToEdgeToCheckList(faceIndex) {
+    let edges = this.faceEdges[faceIndex];
+    for (let e of edges) {
+      let faces = this.edgeFaces.get(e);
+      for (let f of faces) {
+        if (!this._checkedFaces.has(f)) {
+          this._facesToCheck.add(f);
+        }
+      }
+    }
+  }
+
+  done() {
+    return this._facesToCheck.size === 0;
+  }
+
+  nextFace() {
+    return this._facesToCheck.values().next().value;
+  }
+
+  include(faceIndex) {
+    this._facesToCheck.delete(faceIndex);
+    this._checkedFaces.add(faceIndex);
+    this.allFaces.add(faceIndex);
+    this._addFacesConnectedToEdgeToCheckList(faceIndex);
+  }
+
+  exclude(faceIndex) {
+    this._facesToCheck.delete(faceIndex);
+    this._checkedFaces.add(faceIndex);
   }
 }
 
