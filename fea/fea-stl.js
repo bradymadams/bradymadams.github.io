@@ -58,7 +58,7 @@ function init() {
   scene.add(headlamp);
   scene.add(stlgroup);
 
-  faceSelector = new FaceSelector(stlmesh);
+  faceSelector = null;
   
   onWindowResize();
   window.addEventListener('resize', onWindowResize, false);
@@ -84,7 +84,9 @@ function animate() {
 }
 
 function render() {
-  faceSelector.check(scene, camera);
+  if (faceSelector !== null) {
+    faceSelector.check(scene, camera);
+  }
   controls.update();
   headlamp.position.set(camera.position.x, camera.position.y, camera.position.z);
   renderer.render(scene, camera);
@@ -97,7 +99,11 @@ function processStlGeometry(scene, geometry) {
   geometry.boundingBox.getCenter(center);
   controls.target.copy(center);
 
-  faceSelector = new FaceSelector(stlmesh);
+  if (faceSelector === null) {
+    faceSelector = new FaceSelector(stlmesh);
+  } else {
+    faceSelector._createInternalMaps(true);
+  }
 
   let wireframeGeom = new THREE.WireframeGeometry(geometry);
 
@@ -289,6 +295,17 @@ class FaceSelector {
     this._edgeFaces = edges; // edge keys to connected faces (2 faces)
     this._faceEdges = faceEdges; // face index to edge keys
   }
+}
+
+// UI functions
+
+function toggleTriangleEdges(visible) {
+  stlgroup.children[1].visible = visible;
+}
+
+function changeMaxAngle(angle) {
+  faceSelector.maxAngle = angle;
+  $('.max-angle-label').text(faceSelector.maxAngle);
 }
 
 

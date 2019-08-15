@@ -67,9 +67,16 @@
           </div>
 
           <div class="sub-panel">
-            <input type="checkbox" name="clamp-angle" checked onchange="">
-            <label for="clamp-angle">Clamp Angle</label>
+            <input type="checkbox" name="tri-edges" checked onchange="toggleTriangleEdges(this.checked)">
+            <label for="tri-edges">Show Triangle Edges</label>
           </div>
+
+          <div class="sub-panel">
+              <input class="max-angle" type="range" min="0" max="180" value="10" class="slider" oninput="changeMaxAngle(this.value)" style="width:95%">
+              <label for="max-angle">Max Angle Inclusion = <span class="max-angle-label">10</span></label>
+              <!--<input type="checkbox" name="clamp-angle" checked onchange="">
+              <label for="clamp-angle">Clamp Angle</label>-->
+            </div>
         </div>
       </nav>
       <div id="canvas-container">
