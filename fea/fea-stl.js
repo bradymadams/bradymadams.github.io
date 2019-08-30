@@ -7,6 +7,10 @@ var stlgroup;
 var stlmesh;
 var faceSelector;
 
+var voxelloader;
+var voxelgroup;
+var voxelthor;
+
 function init() {
   container = document.getElementById('canvas-container');
 
@@ -51,17 +55,41 @@ function init() {
     }
   );
 
+  voxelloader = new THREE.FileLoader();
+
+  /*voxelloader.load(
+    '/models/dogbone.json',
+    function(data) {
+      let jmodel = JSON.parse(data);
+      let model = new thor.UI.Model(jmodel);
+      voxelthor = new thor.UI.ModelGroup(model.name, model);
+      voxelgroup.add(voxelthor.group);
+      
+      //voxelthor.surface.visible = false;
+      voxelthor.wireframe.visible = true;
+
+      voxelgroup.translateX(-1);
+      voxelgroup.translateY(-1);
+    }
+  )*/
+
   stlgroup = new THREE.Group();
+  voxelgroup = new THREE.Group();
 
   scene.add(camera);
   scene.add(ambient);
   scene.add(headlamp);
   scene.add(stlgroup);
+  scene.add(voxelgroup);
 
   faceSelector = null;
   
   onWindowResize();
   window.addEventListener('resize', onWindowResize, false);
+
+  renderer.domElement.onclick = function(e) {
+    faceSelector.click(e.clientX, e.clientY);
+  }
 
   animate();
 }
@@ -85,7 +113,7 @@ function animate() {
 
 function render() {
   if (faceSelector !== null) {
-    faceSelector.check(scene, camera);
+    faceSelector.check(camera);
   }
   controls.update();
   headlamp.position.set(camera.position.x, camera.position.y, camera.position.z);
@@ -137,10 +165,11 @@ function onMouseMove(event) {
 class FaceSelector {
   constructor(mesh, mustShareEdge=true) {
     this.mesh = mesh;
-    this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
     this.maxAngle = 10;
+    this.mouse = new THREE.Vector2();
     this.clampAngle = true;
+    this.selected = new Set();
 
     this._lastFaces = new Set();
 
@@ -148,13 +177,18 @@ class FaceSelector {
   }
 
   updateMouse(x, y) {
-    let cX = x - renderer.domElement.offsetLeft;
-    let cY = y - renderer.domElement.offsetTop;
-    this.mouse.x = (cX / renderer.domElement.clientWidth) * 2 - 1;
-    this.mouse.y = - (cY / renderer.domElement.clientHeight) * 2 + 1;
+    this.mouse = this.getMouse(x, y);
   }
 
-  check(scene, camera) {
+  getMouse(x, y) {
+    let cX = x - renderer.domElement.offsetLeft;
+    let cY = y - renderer.domElement.offsetTop;
+    let mX = (cX / renderer.domElement.clientWidth) * 2 - 1;
+    let mY = - (cY / renderer.domElement.clientHeight) * 2 + 1;
+    return new THREE.Vector2(mX, mY);
+  }
+
+  check(camera) {
     this.raycaster.setFromCamera(this.mouse, camera);
 
     let intersects = this.raycaster.intersectObject(this.mesh);
@@ -164,6 +198,10 @@ class FaceSelector {
       let faces = this.getFaces(intersects[0].faceIndex);
 
       for (let f = 0; f < this.mesh.geometry.faces.length; f++) {
+        if (this.selected.has(f)) {
+          continue;
+        }
+
         if (faces.has(f)) {
           this.mesh.geometry.faces[f].color.setRGB(0, 1, 0);
         } else {
@@ -171,7 +209,9 @@ class FaceSelector {
         }
       }
 
-      this.mesh.geometry.faces[intersects[0].faceIndex].color.setRGB(0, 0, 1);
+      if (!this.selected.has(intersects[0].faceIndex)) {
+        this.mesh.geometry.faces[intersects[0].faceIndex].color.setRGB(0, 0, 1);
+      }
 
       this.mesh.geometry.colorsNeedUpdate = true;
 
@@ -180,12 +220,40 @@ class FaceSelector {
     } else if (this._lastFaces.size > 0) {
       
       for (let f = 0; f < this.mesh.geometry.faces.length; f++) {
+        if (this.selected.has(f)) {
+          continue;
+        }
         this.mesh.geometry.faces[f].color.setRGB(0.6, 0.6, 0.6);
       }
 
       this.mesh.geometry.colorsNeedUpdate = true;
 
       this._lastFaces = new Set();
+    }
+  }
+
+  click(x, y) {
+    let mouse = this.getMouse(x, y);
+
+    this.raycaster.setFromCamera(mouse, camera);
+
+    let intersects = this.raycaster.intersectObject(this.mesh);
+
+    if (intersects.length > 0) {
+      // only look at closest
+      let faces = this.getFaces(intersects[0].faceIndex);
+
+      this.selected = new Set(faces);
+
+      for (let f = 0; f < this.mesh.geometry.faces.length; f++) {
+        if (faces.has(f)) {
+          this.mesh.geometry.faces[f].color.setRGB(1, 1, 0);
+        }
+      }
+
+      this.mesh.geometry.colorsNeedUpdate = true;
+
+      //mapFacesToVoxelNodes(stlmesh.geometry, faces, voxelthor.surface.geometry, 0.5);
     }
   }
 
@@ -197,7 +265,7 @@ class FaceSelector {
 
     let maxAngleRadians = this.maxAngle * Math.PI / 180.0;
 
-    let checkForFaceContinuity = (face1, face2) => Math.abs(face1.normal.angleTo(face2.normal)) < maxAngleRadians;
+    let checkForFaceContinuity = (face1, face2) => Math.abs(face1.normal.angleTo(face2.normal)) <= maxAngleRadians;
 
     while (!fwalker.done()) {
       let faceIndices = fwalker.nextFace();
