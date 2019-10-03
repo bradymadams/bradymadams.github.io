@@ -81,6 +81,33 @@
             <input type="checkbox" name="display-mesh" checked onchange="teton.activeMesh.paperLayer.visible = this.checked">
             <label for="display-mesh">Display</label>
           </div>
+          <div class="sub-panel toggle-samples">
+              <div>
+                <input id="toggle-samples-all" type="checkbox" name="display-samples-all" checked 
+                  onchange="teton.samplesLayer.visible = this.checked">
+                <label for="display-samples">Display Samples</label>
+              </div>
+              <div>
+                <input id="toggle-samples-wall" type="checkbox" name="display-samples-wall" checked 
+                  onchange="teton.samplesLayer.children['Wall'].visible = this.checked">
+                <label for="display-samples-wall">Display Wall Samples</label>
+              </div>
+              <div>
+                <input id="toggle-samples-skin" type="checkbox" name="display-samples-skin" checked 
+                  onchange="teton.samplesLayer.children['Skin'].visible = this.checked">
+                <label for="display-samples-skin">Display Skin Samples</label>
+              </div>
+              <div>
+                <input id="toggle-samples-infill" type="checkbox" name="display-samples-infill" checked 
+                  onchange="teton.samplesLayer.children['Infill'].visible = this.checked">
+                <label for="display-samples-infill">Display Infill Samples</label>
+              </div>
+              <div>
+                <input id="toggle-samples-none" type="checkbox" name="display-samples-none" checked 
+                  onchange="teton.samplesLayer.children['None'].visible = this.checked">
+                <label for="display-samples-none">Display None Samples</label>
+              </div>
+          </div>
 
           <div class="sub-panel meta-info">
             <p class="name">Name: <span></span></p>
@@ -128,6 +155,8 @@
       var teton = {
         canvas: null,
         meshes: null,
+        samples: null,
+        samplesLayer: null,
         activeMesh: null,
         activeLayerIndex: null,
         zoom: {
@@ -142,7 +171,8 @@
           Skin: ['#4b2bff', 1, null],
           Infill: ['#00b312', 1, null],
           Gap: ['#ee00ff', 1, [2, 2]],
-          Unknown: ['#555555', 1, [10, 4]]
+          Unknown: ['#555555', 1, [10, 4]],
+          None: ['#555555', 1, [10, 4]]
         }
       };
 
@@ -227,6 +257,7 @@
 
       function drawAllMeshes(meshes) {
         teton.meshes = meshes.meshes;
+        teton.samples = meshes.samples || null;
 
         // setup mesh selector
         let c = $('.control-panel');
@@ -295,6 +326,15 @@
         }
 
         let c = $('.control-panel');
+
+        let samps = teton.samplesLayer.children;
+
+        teton.samplesLayer.visible = $('#toggle-samples-all').prop('checked');
+        samps['Wall'].visible = $('#toggle-samples-wall').prop('checked');
+        samps['Skin'].visible = $('#toggle-samples-skin').prop('checked');
+        samps['Infill'].visible = $('#toggle-samples-infill').prop('checked');
+        samps['None'].visible = $('#toggle-samples-none').prop('checked');
+
         let info = c.find('.meta-info');
 
         info.find('.number').find('span').text(layer.id);
@@ -403,6 +443,8 @@
           meshLayer.addChild(drawPart(p));
         }
 
+        meshLayer.addChild(drawSamples(layerIndex));
+
         mesh.paperLayer = meshLayer;
       }
 
@@ -445,6 +487,45 @@
         path.lineTo(start);
 
         return path;
+      }
+
+      function drawSamples(layerIndex) {
+        samplesLayer = new paper.Layer();
+
+        samplesLayer.addChild( new paper.Layer({name: 'Wall'}) );
+        samplesLayer.addChild( new paper.Layer({name: 'Skin'}) );
+        samplesLayer.addChild( new paper.Layer({name: 'Infill'}) );
+        samplesLayer.addChild( new paper.Layer({name: 'None'}) );
+
+        teton.samplesLayer = samplesLayer;
+
+        if (teton.samples === null) {
+          return samplesLayer;
+        }
+
+        sampleCount = 0;
+        for (let i = 0; i < teton.samples.length; i++) {
+          let s = teton.samples[i];
+
+          if (s.layer === layerIndex) {
+            let pathStyle = teton.colors[s.type];
+
+            let path = new paper.Shape.Circle(
+              new paper.Point(s.coordinates[0], s.coordinates[1]),
+              0.25
+            );
+
+            path.setStrokeScaling(false);
+            path.strokeColor = pathStyle[0];
+            path.fillColor = pathStyle[0];
+            path.strokeWidth = pathStyle[1];
+            path.dashArray = pathStyle[2];
+
+            samplesLayer.children[s.type].addChild(path);
+          }
+        }
+
+        return samplesLayer;
       }
 
       function moveLayer(step) {
