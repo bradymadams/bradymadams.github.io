@@ -7,6 +7,8 @@ var stlgroup;
 var stlmesh;
 var faceSelector;
 
+var logSelectedFaces = false;
+
 var voxelloader;
 var voxelgroup;
 var voxelthor;
@@ -242,6 +244,10 @@ class FaceSelector {
     if (intersects.length > 0) {
       // only look at closest
       let faces = this.getFaces(intersects[0].faceIndex);
+
+      if (logSelectedFaces) {
+        console.log('(' + Array.from(faces).join(', ') + ')');
+      }
 
       this.selected = new Set(faces);
 
