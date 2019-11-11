@@ -173,7 +173,8 @@
           Gap: ['#ee00ff', 1, [2, 2]],
           Unknown: ['#555555', 1, [10, 4]],
           None: ['#555555', 1, [10, 4]]
-        }
+        },
+        samplePointSize: 0.25
       };
 
       window.onload = function() {
@@ -428,6 +429,8 @@
         for (let m of teton.meshes) {
           drawLayer(m, layerIndex);
         }
+
+        drawSamples(layerIndex);
       }
 
       function drawLayer(mesh, layerIndex) {
@@ -446,8 +449,6 @@
         for (let p of layer.parts) {
           meshLayer.addChild(drawPart(p));
         }
-
-        meshLayer.addChild(drawSamples(layerIndex));
 
         mesh.paperLayer = meshLayer;
       }
@@ -520,7 +521,7 @@
 
             let path = new paper.Shape.Circle(
               new paper.Point(screenCoords[0], screenCoords[1]),
-              0.25
+              teton.samplePointSize
             );
 
             path.setStrokeScaling(false);
