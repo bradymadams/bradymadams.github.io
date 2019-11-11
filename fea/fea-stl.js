@@ -7,7 +7,7 @@ var stlgroup;
 var stlmesh;
 var faceSelector;
 
-var logSelectedFaces = false;
+var logSelectedFaces = false; // if true, selected faces will log to console
 
 var voxelloader;
 var voxelgroup;
