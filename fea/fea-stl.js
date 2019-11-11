@@ -161,7 +161,9 @@ function processStlGeometry(scene, geometry) {
 }
 
 function onMouseMove(event) {
-  faceSelector.updateMouse(event.clientX, event.clientY);
+  if (faceSelector !== undefined) {
+    faceSelector.updateMouse(event.clientX, event.clientY);
+  }
 }
 
 class FaceSelector {
