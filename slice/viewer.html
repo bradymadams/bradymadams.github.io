@@ -83,27 +83,27 @@
           </div>
           <div class="sub-panel toggle-samples">
               <div>
-                <input id="toggle-samples-all" type="checkbox" name="display-samples-all" checked 
+                <input id="toggle-samples-all" type="checkbox" name="display-samples-all" checked
                   onchange="teton.samplesLayer.visible = this.checked">
                 <label for="display-samples">Display Samples</label>
               </div>
               <div>
-                <input id="toggle-samples-wall" type="checkbox" name="display-samples-wall" checked 
+                <input id="toggle-samples-wall" type="checkbox" name="display-samples-wall" checked
                   onchange="teton.samplesLayer.children['Wall'].visible = this.checked">
                 <label for="display-samples-wall">Display Wall Samples</label>
               </div>
               <div>
-                <input id="toggle-samples-skin" type="checkbox" name="display-samples-skin" checked 
+                <input id="toggle-samples-skin" type="checkbox" name="display-samples-skin" checked
                   onchange="teton.samplesLayer.children['Skin'].visible = this.checked">
                 <label for="display-samples-skin">Display Skin Samples</label>
               </div>
               <div>
-                <input id="toggle-samples-infill" type="checkbox" name="display-samples-infill" checked 
+                <input id="toggle-samples-infill" type="checkbox" name="display-samples-infill" checked
                   onchange="teton.samplesLayer.children['Infill'].visible = this.checked">
                 <label for="display-samples-infill">Display Infill Samples</label>
               </div>
               <div>
-                <input id="toggle-samples-none" type="checkbox" name="display-samples-none" checked 
+                <input id="toggle-samples-none" type="checkbox" name="display-samples-none" checked
                   onchange="teton.samplesLayer.children['None'].visible = this.checked">
                 <label for="display-samples-none">Display None Samples</label>
               </div>
@@ -213,7 +213,7 @@
 
       function dropHandler(event) {
         event.preventDefault();
-        
+
         if (event.dataTransfer.items) {
           var file = event.dataTransfer.items[0].getAsFile();
         } else {
@@ -423,7 +423,7 @@
 
       function drawAllMeshLayers(layerIndex) {
         teton.activeLayerIndex = layerIndex;
-        
+
         paper.project.clear();
 
         for (let m of teton.meshes) {
@@ -445,7 +445,7 @@
         }
 
         layer = mesh.layers[layerIndex];
-        
+
         for (let p of layer.parts) {
           meshLayer.addChild(drawPart(p));
         }
@@ -455,7 +455,7 @@
 
       function drawPart(part) {
         part.paperLayer = new paper.Layer();
-        
+
         for (let poly of part.polygons) {
           path = drawPolygon(poly);
           part.paperLayer.addChild(path);

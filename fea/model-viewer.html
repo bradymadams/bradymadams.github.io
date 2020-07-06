@@ -1,0 +1,119 @@
+<html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r118/three.js"></script>
+    <script src="/helpers/TrackballControls.js"></script>
+    <script src="model-viewer.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+
+    <link href="https://fonts.googleapis.com/css?family=Dancing+Script|Montserrat" rel="stylesheet">
+
+    <style type="text/css">
+      body {
+        font-family:'Montserrat',sans-serif;
+      }
+
+      .wrapper {
+        display: flex;
+        width: 100%;
+        max-height: 100vh;
+        align-items: stretch;
+      }
+
+      #sidebar {
+        overflow-y: scroll;
+        min-width: 250px;
+        max-width: 250px;
+        min-height: 100vh;
+        padding: 10px 5px 0px 10px;
+      }
+
+      .dropzone {
+        background-color: #aeaeae;
+        width: 220px;
+        height: 60px;
+        padding: 8px;
+        border-radius: 5px;
+        text-align: center;
+      }
+
+      .control-panel div.sub-panel {
+        padding:5px 3px 5px 3px;
+        margin-top:5px;
+        margin-bottom:5px;
+        border: 1px solid #808080;
+        border-radius: 5px;
+      }
+
+      #canvas-container {
+        width: 100%;
+      }
+
+      #canvas-container canvas {
+        border: solid 1px black;
+        border-radius: 4px;
+        margin-top: 10px;
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrapper">
+      <nav id="sidebar">
+        <div class="control-panel">
+          <div class="dropzone" ondrop="dropHandler(event)" ondragover="dragOverHandler(event)">
+            <p>Drag and drop JSON file here</p>
+          </div>
+
+          <div class="sub-panel meta-info">
+            <p class="name">Name: <span></span></p>
+          </div>
+
+          <div class="sub-panel toggle-regions">
+            <div>
+              <input id="toggle-mesh" type="checkbox" name="display-mesh" checked
+                onchange="env.model.voxels.visible = this.checked">
+              <label for="display-mesh">Display Mesh</label>
+            </div>
+            <div>
+              <input id="toggle-regions" type="checkbox" name="display-regions" checked
+                onchange="env.model.layer.visible = this.checked">
+              <label for="display-regions">Display Regions</label>
+            </div>
+          </div>
+
+          <div class="sub-panel voxel-opacity">
+            <label for="voxel-opacity">Voxel Opacity</label>
+            <input class="voxel-opacity" type="range" min="0" max="100" value="50" class="slider"
+              oninput="env.voxelMaterial.opacity = this.value / 100; env.edgeMaterial.opacity = this.value / 100">
+          </div>
+
+          <div class="sub-panel layer-selector">
+            <label for="layer-slider">Layer:</label>
+            <input class="layer-slider" type="range" min="1" max="1" value="1" class="slider" disabled="true">
+            <div>
+              <button onclick="moveLayer(1)">Up 1</button>
+              <button onclick="moveLayer(-1)">Down 1</button>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <div id="canvas-container">
+      </div>
+    </div>
+
+    <script>
+      window.onload = function() {
+        init();
+
+        $.getJSON(
+          '/models/dogbone.json',
+          function(jmodel) {
+            processModel(jmodel);
+          }
+        );
+      };
+    </script>
+  </body>
+</html>

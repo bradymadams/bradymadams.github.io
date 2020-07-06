@@ -18,9 +18,9 @@ function init() {
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
-  
+
   container.appendChild(renderer.domElement);
-  
+
   camera = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 1, 10000);
   camera.position.set(100, 100, 100);
 
@@ -31,13 +31,13 @@ function init() {
   controls.rotateSpeed = 3.0;
   controls.zoomSpeed = 2.0;
   controls.panSpeed = 0.04;
-  
+
   ambient = new THREE.AmbientLight(0xa0a0a0);
   headlamp = new THREE.DirectionalLight(0xffffff, 0.5);
-  
+
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xffffff)
-  
+
   let geometry = new THREE.BoxGeometry(0.75, 0.75, 0.75);
 
   var material = new THREE.MeshLambertMaterial({
@@ -66,7 +66,7 @@ function init() {
       let model = new thor.UI.Model(jmodel);
       voxelthor = new thor.UI.ModelGroup(model.name, model);
       voxelgroup.add(voxelthor.group);
-      
+
       //voxelthor.surface.visible = false;
       voxelthor.wireframe.visible = true;
 
@@ -85,7 +85,7 @@ function init() {
   scene.add(voxelgroup);
 
   faceSelector = null;
-  
+
   onWindowResize();
   window.addEventListener('resize', onWindowResize, false);
 
@@ -222,7 +222,7 @@ class FaceSelector {
       this._lastFaces = faces;
 
     } else if (this._lastFaces.size > 0) {
-      
+
       for (let f = 0; f < this.mesh.geometry.faces.length; f++) {
         if (this.selected.has(f)) {
           continue;
@@ -360,7 +360,7 @@ class FaceWalker {
       for (let f of faces) {
 
         let fromFace = this.fromStartingFace ? this.startingFace : faceIndex;
-        
+
         if (!this._checkedFaces.has(f)) {
 
           this._addFaceToCheck(f, fromFace);
@@ -450,7 +450,7 @@ function dragOverHandler(event) {
 
 function dropHandler(event) {
   event.preventDefault();
-  
+
   if (event.dataTransfer.items) {
     var file = event.dataTransfer.items[0].getAsFile();
   } else {
