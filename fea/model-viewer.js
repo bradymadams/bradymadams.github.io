@@ -288,9 +288,11 @@ class Model {
     this.layers = {};
     this.group = new THREE.Group();
     this.voxels = new THREE.Group();
+    this.voxelEdges = new THREE.Group();
     this.layer = new THREE.Group();
 
     this.group.add(this.voxels);
+    this.group.add(this.voxelEdges);
     this.group.add(this.layer);
 
     this._createVoxelMesh();
@@ -306,6 +308,7 @@ class Model {
     let edges = new THREE.EdgesGeometry(cube);
 
     let voxels = this.voxels;
+    let voxelEdges = this.voxelEdges;
 
     let makeVoxelGeometry = function(index) {
       let mesh = new THREE.Mesh(cube, env.voxelMaterial);
@@ -321,7 +324,7 @@ class Model {
       lines.position.copy(offset);
 
       voxels.add(mesh);
-      voxels.add(lines);
+      voxelEdges.add(lines);
     }
 
     let it = new VoxelIterator(voxelMesh);
