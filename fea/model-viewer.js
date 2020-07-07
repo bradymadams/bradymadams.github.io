@@ -355,7 +355,6 @@ class Model {
 
         for (let region of vlayer[6]) {
           let matType = materialTypes[region[0]];
-          let mat = env.regionMaterials[matType];
           let pixels = region[3];
 
           for (let pixelFlatIndex of pixels) {
