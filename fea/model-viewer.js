@@ -26,11 +26,11 @@ var env = {
     transparent: true
   }),
   regionMaterials: {
-    'None': new THREE.MeshBasicMaterial({color: 0x222222}),
-    'Unknown': new THREE.MeshBasicMaterial({color: 0x000000}),
-    'Skin': new THREE.MeshBasicMaterial({color: 0x0000ff}),
-    'Wall': new THREE.MeshBasicMaterial({color: 0xffa500}),
-    'Infill': new THREE.MeshBasicMaterial({color: 0x00ff00}),
+    'None': new THREE.MeshBasicMaterial({color: 0x222222, side: THREE.DoubleSide}),
+    'Unknown': new THREE.MeshBasicMaterial({color: 0x000000, side: THREE.DoubleSide}),
+    'Skin': new THREE.MeshBasicMaterial({color: 0x0000ff, side: THREE.DoubleSide}),
+    'Wall': new THREE.MeshBasicMaterial({color: 0xffa500, side: THREE.DoubleSide}),
+    'Infill': new THREE.MeshBasicMaterial({color: 0x00ff00, side: THREE.DoubleSide}),
   },
   model: null,
   modelGroup: new THREE.Group()
