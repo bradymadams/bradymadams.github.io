@@ -26,7 +26,7 @@ var env = {
     transparent: true
   }),
   regionMaterials: {
-    'None': new THREE.MeshBasicMaterial({color: 0x222222, side: THREE.DoubleSide}),
+    'None': new THREE.MeshBasicMaterial({color: 0x444444, side: THREE.DoubleSide}),
     'Unknown': new THREE.MeshBasicMaterial({color: 0x000000, side: THREE.DoubleSide}),
     'Skin': new THREE.MeshBasicMaterial({color: 0x0000ff, side: THREE.DoubleSide}),
     'Wall': new THREE.MeshBasicMaterial({color: 0xffa500, side: THREE.DoubleSide}),
@@ -166,7 +166,21 @@ function moveLayer(inc) {
   let slider = $('.layer-slider')[0];
   slider.value = parseInt(slider.value) + inc;
 
-  let layerHeights = Object.keys(env.model.layers).sort();
+  let layerHeights = Object.keys(env.model.layers).sort(
+    function(lhs, rhs) {
+      lhs = parseFloat(lhs);
+      rhs = parseFloat(rhs);
+
+      if (lhs < rhs) {
+        return -1;
+      } else if (lhs > rhs) {
+        return 1;
+      }
+
+      return 0;
+    }
+  );
+
   let layerHeight = layerHeights[slider.value];
 
   env.model.showLayer(
@@ -338,17 +352,14 @@ class Model {
     let regionGridSize = voxelMesh.region_grid_size;
     let regionGridRes = voxelMesh.region_grid_resolution;
 
-    let pixel = new THREE.PlaneGeometry(
-      regionGridRes[0],
-      regionGridRes[1]
-    );
-
     let makeVoxelLayers = function(index) {
       let thisVoxelLayers = voxelMesh.layers[index.activeIndex];
 
+      let thickness = 0.0;
+
       for (let vlayer of thisVoxelLayers) {
-        let thickness = vlayer[0];
-        let z = index.origin.z + thickness / 2;
+        thickness += vlayer[0];
+        let z = index.origin.z + thickness - vlayer[0] / 2;
 
         if (!(z in layers)) {
           layers[z] = new Layer();
