@@ -20,7 +20,7 @@ var env = {
       side: THREE.FrontSide,
       color: new THREE.Color(0xf0f0f0),
       opacity: 1.0,
-      transparent: true
+      transparent: false
     }),
     infill: new THREE.MeshLambertMaterial({
       side: THREE.FrontSide,
