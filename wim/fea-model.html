@@ -77,14 +77,19 @@
               <label for="display-mesh">Display Mesh</label>
             </div>
             <div>
-              <input id="toggle-mesh" type="checkbox" name="display-mesh" checked
+              <input id="toggle-mesh-edges" type="checkbox" name="display-mesh-edges" checked
                 onchange="env.model.voxelEdges.visible = this.checked">
-              <label for="display-mesh">Display Mesh Edges</label>
+              <label for="display-mesh-edges">Display Mesh Edges</label>
             </div>
             <div>
               <input id="toggle-regions" type="checkbox" name="display-regions" checked
                 onchange="env.model.layer.visible = this.checked">
               <label for="display-regions">Display Regions</label>
+            </div>
+            <div>
+              <input id="toggle-axes" type="checkbox" name="display-axes" checked
+                onchange="env.model.axes.visible = this.checked">
+              <label for="display-axes">Display Material Axes</label>
             </div>
           </div>
 

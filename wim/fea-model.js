@@ -32,6 +32,10 @@ var env = {
     'Wall': new THREE.MeshBasicMaterial({color: 0xffa500, side: THREE.DoubleSide}),
     'Infill': new THREE.MeshBasicMaterial({color: 0x00ff00, side: THREE.DoubleSide}),
   },
+  materialAxisMaterial: new THREE.LineBasicMaterial({
+    color: 0xff0000,
+    linewidth: 2
+  }),
   model: null,
   modelGroup: new THREE.Group()
 }
@@ -144,6 +148,11 @@ function processModel(jmodel) {
 
   env.model = new Model(jmodel);
 
+  $('#toggle-mesh').checked = env.model.voxels.visible;
+  $('#toggle-mesh-edges').checked = env.model.voxelEdges.visible;
+  $('#toggle-regions').checked = env.model.layer.visible;
+  $('#toggle-axes').checked = env.model.axes.visible;
+
   env.modelGroup.add(env.model.group);
 
   let bbox = new THREE.Box3().setFromObject(env.model.group);
@@ -152,11 +161,9 @@ function processModel(jmodel) {
 
   $('.name').text(env.model.wim.name);
 
-  let layerHeights = Object.keys(env.model.layers);
-
   let slider = $('.layer-slider')[0];
   slider.min = 0;
-  slider.max = layerHeights.length - 1;
+  slider.max = env.model.layers.size - 1;
   slider.value = 0;
 
   moveLayer(0);
@@ -166,7 +173,15 @@ function moveLayer(inc) {
   let slider = $('.layer-slider')[0];
   slider.value = parseInt(slider.value) + inc;
 
-  let layerHeights = Object.keys(env.model.layers).sort(
+  const keysIt = env.model.layers.keys();
+
+  const keys = [];
+
+  for (let k of keysIt) {
+    keys.push(k);
+  }
+
+  let layerHeights = keys.sort(
     function(lhs, rhs) {
       lhs = parseFloat(lhs);
       rhs = parseFloat(rhs);
@@ -183,9 +198,7 @@ function moveLayer(inc) {
 
   let layerHeight = layerHeights[slider.value];
 
-  env.model.showLayer(
-    layerHeight
-  );
+  env.model.showLayer(layerHeight);
 
   $('.layer-selector label').text(`Layer: ${parseFloat(layerHeight).toFixed(2)}`);
 }
@@ -268,6 +281,8 @@ class Layer {
     this.thickness = thickness;
 
     this.regions = new THREE.Group();
+    this.axes = new THREE.Group();
+    this._axesVertices = [];
 
     this.wall = new THREE.Mesh(
       new THREE.Geometry(),
@@ -294,20 +309,74 @@ class Layer {
     this.regions.add(this.skin);
     this.regions.add(this.none);
   }
+
+  addAxes(directions, centers, length, z) {
+    for (let i = 0; i < directions.length; i++) {
+      const dir = directions[i];
+      const center = centers[i];
+
+      const v1 = new THREE.Vector3();
+      const v2 = new THREE.Vector3();
+
+      v1.add(center);
+      v2.add(center);
+
+      v1.addScaledVector(dir, -length/3);
+      v2.addScaledVector(dir, length/3);
+
+      if (isNaN(v1.x) || isNaN(v1.y) || isNaN(v1.z)) {
+        continue;
+      }
+
+      if (isNaN(v2.x) || isNaN(v2.y) || isNaN(v2.z)) {
+        continue;
+      }
+
+      this._axesVertices.push(v1, v2);
+    }
+  }
+
+  setAxes() {
+    while (this.axes.children.length) {
+      this.axes.remove(this.axes.children[0]);
+    }
+
+    const positions = new Float32Array(this._axesVertices.length * 3);
+
+    for (var i = 0; i < this._axesVertices.length; i++) {
+        const v = this._axesVertices[i];
+
+        positions[i * 3] = v.x;
+        positions[i * 3 + 1] = v.y;
+        positions[i * 3 + 2] = v.z;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    //geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 2000);
+
+    this.axes.add(new THREE.LineSegments(geometry, env.materialAxisMaterial));
+  }
 }
 
 class Model {
   constructor(wim) {
     this.wim = wim;
-    this.layers = {};
+    this.layers = new Map();
     this.group = new THREE.Group();
     this.voxels = new THREE.Group();
     this.voxelEdges = new THREE.Group();
     this.layer = new THREE.Group();
+    this.axes = new THREE.Group();
+
+    this.voxels.visible = true;
+    this.voxelEdges.visible = true;
 
     this.group.add(this.voxels);
     this.group.add(this.voxelEdges);
     this.group.add(this.layer);
+    this.group.add(this.axes);
 
     this._createVoxelMesh();
     this._createLayers();
@@ -351,6 +420,7 @@ class Model {
     let layers = this.layers;
     let regionGridSize = voxelMesh.region_grid_size;
     let regionGridRes = voxelMesh.region_grid_resolution;
+    let csyses = voxelMesh.coordinate_systems;
 
     let makeVoxelLayers = function(index) {
       let thisVoxelLayers = voxelMesh.layers[index.activeIndex];
@@ -361,14 +431,18 @@ class Model {
         thickness += vlayer[0];
         let z = index.origin.z + thickness - vlayer[0] / 2;
 
-        if (!(z in layers)) {
-          layers[z] = new Layer();
+        if (!layers.has(z)) {
+          layers.set(z, new Layer());
         }
 
-        let layer = layers[z];
+        let layer = layers.get(z);
+
+        const matAxesDirs = [];
+        const matAxesCenters = [];
 
         for (let region of vlayer[6]) {
           let matType = materialTypes[region[0]];
+          let csys = csyses[region[2]];
           let pixels = region[3];
 
           for (let pixelFlatIndex of pixels) {
@@ -406,14 +480,37 @@ class Model {
             } else if (matType === 'Infill') {
               addPixelFaces(layer.infill);
             }
+
+            if (matType !== 'None') {
+              if (csys.type !== 'three_points') {
+                console.warn(`Unrecognized coordinate system type ${csys.type}`);
+              } else {
+                const xaxis = new THREE.Vector3(
+                  csys.xaxis[0] - csys.origin[0],
+                  csys.xaxis[1] - csys.origin[1],
+                  csys.xaxis[2] - csys.origin[2]
+                );
+
+                xaxis.normalize();
+
+                matAxesDirs.push(xaxis);
+                matAxesCenters.push(nodeCoords(i+0.5, j+0.5));
+              }
+            }
           }
         }
+
+        layer.addAxes(matAxesDirs, matAxesCenters, regionGridRes[0], z);
       }
     }
 
     let it = new VoxelIterator(voxelMesh);
 
     it.iterate(makeVoxelLayers);
+
+    this.layers.forEach(
+      (l, k, m) => l.setAxes()
+    );
   }
 
   showLayer(z) {
@@ -421,8 +518,13 @@ class Model {
       this.layer.remove(this.layer.children[0]);
     }
 
-    if (z in this.layers) {
-      this.layer.add(this.layers[z].regions);
+    while (this.axes.children.length) {
+      this.axes.remove(this.axes.children[0]);
+    }
+
+    if (this.layers.has(z)) {
+      this.layer.add(this.layers.get(z).regions);
+      this.axes.add(this.layers.get(z).axes);
     } else {
       console.error(z + ' does not match any layer heights');
     }
